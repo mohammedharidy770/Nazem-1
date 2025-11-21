@@ -20,7 +20,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{font-family:'Cairo',sans-serif;background:linear-gradient(180deg,var(--bg),#05020a);color:#eceff8;padding:12px; -webkit-font-smoothing:antialiased}
+body{font-family:'Tema',sans-serif;background:linear-gradient(180deg,var(--bg),#0a1930);color:#eceff8;padding:12px; -webkit-font-smoothing:antialiased}
 header{text-align:center;margin-bottom:12px}
 h1{font-size:20px;margin-bottom:6px}
 .lead{color:var(--muted);font-size:13px;margin-bottom:8px}
@@ -88,12 +88,78 @@ textarea{min-height:80px}
 }
 /* small accessibility helpers */
 .sr-only{position:absolute;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
+
+/* --- Injected animations (preserves existing styles & behavior) --- */
+/* Page fade-in */
+body{
+  animation: tm_fadeIn 0.9s ease both;
+}
+@keyframes tm_fadeIn{ from{ opacity: 0; transform: translateY(10px);} to{ opacity:1; transform: translateY(0);} }
+
+/* Cards slide up */
+.card{
+  will-change: transform, opacity;
+  animation: tm_cardPop 0.7s cubic-bezier(.2,.9,.2,1) both;
+}
+@keyframes tm_cardPop{ from{ opacity:0; transform: translateY(14px) scale(.995);}  to{ opacity:1; transform: translateY(0) scale(1);} }
+
+/* Slots appear with subtle slide & stagger (JS handles stagger via animation-delay) */
+.slot{
+  animation: tm_slotIn 0.45s ease both;
+}
+@keyframes tm_slotIn{ from{ opacity:0; transform: translateX(10px);} to{ opacity:1; transform: translateX(0);} }
+
+/* Done pulse when marked complete */
+.slot.done{
+  animation: tm_donePulse 0.6s ease both;
+}
+@keyframes tm_donePulse{
+  0% { box-shadow: 0 0 0 0 rgba(100,255,218,0.12); transform: scale(1);}
+  50% { box-shadow: 0 10px 30px -6px rgba(100,255,218,0.12); transform: scale(.995); }
+  100% { box-shadow: none; transform: scale(1); }
+}
+
+/* Highlight temporary glow */
+.slot.highlight{
+  animation: tm_highlight 0.9s ease-in-out both;
+}
+@keyframes tm_highlight{
+  0%{ box-shadow: 0 0 0 0 rgba(100,255,218,0.12); }
+  50%{ box-shadow: 0 14px 40px -12px rgba(100,255,218,0.12); transform: translateY(-2px); }
+  100%{ box-shadow: none; transform: translateY(0); }
+}
+
+/* Modal pop */
+.modal-backdrop[style*="display:block"], .modal-backdrop[aria-hidden="false"]{
+  animation: tm_backdropIn 0.28s ease both;
+}
+@keyframes tm_backdropIn{ from{ opacity:0; } to{ opacity:1; } }
+.modal{
+  animation: tm_modalPop 0.36s cubic-bezier(.2,.9,.2,1) both;
+}
+@keyframes tm_modalPop{ from{ opacity:0; transform: scale(.94);} to{ opacity:1; transform: scale(1);} }
+
+/* Notice slide down */
+.notice{
+  animation: tm_notice 0.42s ease both;
+}
+@keyframes tm_notice{ from{ opacity:0; transform: translateY(-8px);} to{ opacity:1; transform: translateY(0);} }
+
+/* Timer fill smoothness */
+.timerFill{ transition: width 0.6s cubic-bezier(.2,.9,.2,1); }
+
+/* Button micro-interaction */
+.btn{ transition: transform 0.14s ease, box-shadow 0.14s ease; }
+.btn:active{ transform: scale(.985); }
+
+/* Stagger utility (applied via JS after rendering slots) */
+.tm-staggered > .slot{ opacity:0; transform: translateX(10px); }
+
 </style>
 </head>
 <body>
 <header>
   <h1>نظّم يومك — ابدأ الجدول الآن</h1>
-  <div class="lead">اضغط "ابدأ اليوم" والجدول سيبدأ من الوقت الحالي لمدة 8 ساعات مذاكرة (موزعة تلقائيًا). مواقيت الصلاة مدمجة وديناميكية. تمّت إضافة حفظ/استعادة، تصدير/استيراد، مؤقت_SLOT، وإشعارات سطح المكتب.</div>
 </header>
 
 <div class="app">
@@ -136,12 +202,11 @@ textarea{min-height:80px}
       <label class="label">مدة الاستراحة الافتراضية بين المواد (دقيقة)</label>
       <input type="number" id="breakMinutes" value="15" inputmode="numeric">
       <label class="label">المدينة لمواقيت الصلاة</label>
-      <input type="text" id="cityInput" value="Cairo" autocomplete="on">
+      <input type="text" id="cityInput" value="Tema" autocomplete="on">
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <button class="btn primary" id="applyBtn">تطبيق الإعدادات</button>
         <button class="btn" id="notifyPermBtn">🔔 طلب إذن إشعارات</button>
       </div>
-      <div class="summary" style="margin-top:8px">حفظ الجدول يسمح باستعادة اليوم حتى بعد إعادة تحميل الصفحة. الإشعارات تظهر على سطح المكتب إن سمحت المتصفح.</div>
     </div>
 
     <div class="card" style="margin-top:12px" role="region" aria-label="المواعيد">
@@ -149,7 +214,6 @@ textarea{min-height:80px}
       <label class="label">اكتب مواعيدك أو ملاحظات التذكير</label>
       <textarea id="appointments" placeholder="مثال: موعد مع الدكتور الخميس 6 مساءً"></textarea>
       <button class="btn primary" id="saveAppointments">💾 احفظ المواعيد</button>
-      <div class="summary" style="margin-top:8px">المواعيد تُحفظ محليًا في متصفحك وسيتم عرضها داخل التذكير بعد الانتهاء.</div>
     </div>
 
     <div class="card" style="margin-top:12px" id="swapSubjectsCard" role="region" aria-label="تبديل المواد">
@@ -341,7 +405,7 @@ async function startDay(){
   headerNote.style.padding='6px 0';
   headerNote.innerText=`انطلق من: ${pad(now.getHours())}:${pad(now.getMinutes())} — مدة المذاكرة الإجمالية: 8 ساعات`;
 
-  const city = (cityInput.value || 'Cairo').trim();
+  const city = (cityInput.value || 'Tema').trim();
   const apiTimings = await fetchPrayerTimingsForCity(city);
   const prayerNamesMap = { Fajr:'الفجر', Dhuhr:'الظهر', Asr:'العصر', Maghrib:'المغرب', Isha:'العشاء' };
   const prayersList = [];
@@ -554,6 +618,53 @@ window.addEventListener('load', ()=>{
   const saved = loadScheduleFromStorage(); if(saved){ statusEl.innerText = 'جدول محفوظ موجود — اضغط "تحميل الجدول" لاستعادته.'; }
 });
 
+</script>
+
+
+<script>
+(function(){
+  // apply stagger class after timeline is updated/DOM appended
+  function applyStagger() {
+    const timeline = document.getElementById('timeline');
+    if(!timeline) return;
+    // Add tm-staggered class briefly then set per-slot delays
+    const slots = Array.from(timeline.querySelectorAll('.slot'));
+    if(slots.length === 0) return;
+    timeline.classList.add('tm-staggered');
+    slots.forEach((el, i) => {
+      const delay = 0.06 * i; // 60ms stagger
+      el.style.animationDelay = (0.06 + delay) + 's';
+      el.style.opacity = 1;
+    });
+    // remove tm-staggered after animations complete
+    setTimeout(()=> timeline.classList.remove('tm-staggered'), 1200 + slots.length * 60);
+  }
+
+  // observe changes to timeline and re-apply stagger when children change
+  const timeline = document.getElementById('timeline');
+  if(timeline){
+    const obs = new MutationObserver((mutations)=>{
+      // run on next microtask to let DOM fully update
+      Promise.resolve().then(()=> applyStagger());
+    });
+    obs.observe(timeline, { childList: true, subtree: true });
+    // initial call
+    applyStagger();
+  }
+
+  // ensure newly created 'done' toggles animate: add class reflow
+  document.addEventListener('click', (e)=>{
+    const slot = e.target.closest && e.target.closest('.slot.study');
+    if(!slot) return;
+    if(slot.classList.contains('done')){
+      // force reflow to replay animation
+      slot.classList.remove('done');
+      void slot.offsetWidth;
+      slot.classList.add('done');
+    }
+  });
+
+})();
 </script>
 
 </body>
